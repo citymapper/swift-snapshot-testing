@@ -295,7 +295,7 @@ public func verifySnapshot<Value, Format>(
         failedSnapshotFileUrl = try createArtifacts(snapshotting: snapshotting,
                                                         artifacts: artifacts,
                                                         artifactsSubUrl: xcprettyReportDirectoryUrl,
-                                                        originTestName: testName)
+                                                        originTestName: name ?? testName)
       } else if let (failure, attachments) = attachmentDiff {
         let artifactsSubUrl = artifactsUrl.appendingPathComponent(fileName)
         failureMessage = failure
