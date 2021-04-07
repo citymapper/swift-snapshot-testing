@@ -278,14 +278,24 @@ public func verifySnapshot<Value, Format>(
       var failureMessage: String!
 
       if let (failure, artifacts) = artifactDiff {
-        let testDirectoryName: String = "\(testName).\(identifier)"
-        let artifactsSubUrl = artifactsUrl.appendingPathComponent(fileName).appendingPathComponent(testDirectoryName)
+        let fileUrl = URL(fileURLWithPath: String(describing: file))
+        /// Note: We're in an .xcworkspace so need to go 'up' 2x directories
+        /// in order to get access to the parent directory for the xcpretty report
+        /// a.k.a `sdk-internal/ios`
+        let projectParentDirectoryUrl = fileUrl
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        
+        let xcprettyReportDirectoryUrl = projectParentDirectoryUrl
+            .appendingPathComponent("build")
+            .appendingPathComponent("reports")
+        
         failureMessage = failure
         failedSnapshotFileUrl = try createArtifacts(snapshotting: snapshotting,
                                                         artifacts: artifacts,
-                                                        artifactsSubUrl: artifactsSubUrl,
-                                                        testDirectoryName: testDirectoryName)
-
+                                                        artifactsSubUrl: xcprettyReportDirectoryUrl,
+                                                        originTestName: testName)
       } else if let (failure, attachments) = attachmentDiff {
         let artifactsSubUrl = artifactsUrl.appendingPathComponent(fileName)
         failureMessage = failure
@@ -327,7 +337,7 @@ private func createArtifacts<Value, Format>(
   snapshotting: Snapshotting<Value, Format>,
   artifacts: [SnapshotArtifact],
   artifactsSubUrl: URL,
-  testDirectoryName: String) throws -> URL {
+  originTestName: String) throws -> URL {
 
   if !artifacts.isEmpty {
     #if !os(Linux)
@@ -349,14 +359,14 @@ private func createArtifacts<Value, Format>(
   try FileManager.default.createDirectory(at: artifactsSubUrl, withIntermediateDirectories: true)
 
   for artifact in artifacts {
-    let artifactFileName = testDirectoryName + "_" + artifact.artifactType.rawValue
+    let artifactFileName = originTestName + " " + artifact.artifactType.rawValue
     let artifactFileUrl = artifactsSubUrl.appendingPathComponent(artifactFileName)
       .appendingPathExtension(snapshotting.pathExtension ?? "")
     try artifact.data.write(to: artifactFileUrl)
   }
 
   return artifactsSubUrl
-    .appendingPathComponent(testDirectoryName + "_" + SnapshotArtifact.ArtifactType.failure.rawValue)
+    .appendingPathComponent(originTestName + " " + SnapshotArtifact.ArtifactType.failure.rawValue)
     .appendingPathExtension(snapshotting.pathExtension ?? "")
 }
 
